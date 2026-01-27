@@ -10,18 +10,22 @@ if (hasAdmin()) {
 }
 
 // Handle setup form submission
-let setupError = null;
+let setupError: string | null = null;
 if (Astro.request.method === 'POST') {
   try {
     const formData = await Astro.request.formData();
-    const username = formData.get('username');
-    const password = formData.get('password');
-    const confirmPassword = formData.get('confirmPassword');
+    const username = (formData.get('username') || '').toString().trim();
+    const password = (formData.get('password') || '').toString().trim();
+    const confirmPassword = (formData.get('confirmPassword') || '').toString().trim();
 
-    if (password !== confirmPassword) {
+    if (!username || !password || !confirmPassword) {
+      setupError = 'All fields are required';
+    } else if (password !== confirmPassword) {
       setupError = 'Passwords do not match';
     } else if (password.length < 6) {
       setupError = 'Password must be at least 6 characters';
+    } else if (username.length < 3) {
+      setupError = 'Username must be at least 3 characters';
     } else {
       const result = await createAdmin(username, password);
       
@@ -35,7 +39,7 @@ if (Astro.request.method === 'POST') {
     }
   } catch (error) {
     console.error('Setup error:', error);
-    setupError = error.message || 'Setup failed. Please try again.';
+    setupError = error instanceof Error ? error.message : 'Setup failed. Please try again.';
   }
 }
 ---

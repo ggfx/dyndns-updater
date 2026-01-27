@@ -335,14 +335,7 @@ a:hover {
 /* Responsive */
 @media (max-width: 768px) {
   nav {
-    flex-direction: column;
     gap: 15px;
-  }
-
-  nav div {
-    flex-direction: column;
-    gap: 10px;
-    width: 100%;
   }
 
   nav a {

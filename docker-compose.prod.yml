@@ -2,7 +2,7 @@ networks:
   dyndns_network:
 
 services:
-  redis:
+  dyndns-redis:
     image: redis:latest
 #    container_name: redis
     restart: unless-stopped
@@ -17,7 +17,7 @@ services:
     networks:
       - dyndns_network
 
-  dyndns:
+  dyndns-web:
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -30,7 +30,7 @@ services:
     volumes:
       - ./frontend/data:/app/data
     depends_on:
-      - redis
+      - dyndns-redis
     networks:
       - dyndns_network
 
@@ -45,6 +45,6 @@ services:
       - ./caddy/data:/data
       - ./caddy/config:/config
     environment:
-      DOMAIN_DYNDNS: ${DOMAIN_DYNDNS:?DOMAIN_DYNDNS environment variable is required}
+      DOMAIN_DYNDNS_UPDATER: ${DOMAIN_DYNDNS_UPDATER:?DOMAIN_DYNDNS_UPDATER environment variable is required}
     networks:
       - dyndns_network

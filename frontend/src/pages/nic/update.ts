@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
-import { getBasicAuth } from '../lib/session.js';
-import { db } from '../lib/db.js';
-import { updateDynDNSRRset } from '../lib/hetzner.js';
+import { getBasicAuth } from '../../lib/session.js';
+import { db } from '../../lib/db.js';
+import { requireProvider } from '../../lib/providers/index.js';
 
 export const prerender = false;
 
@@ -22,6 +22,14 @@ export const GET: APIRoute = async ({ request }) => {
   const valid = bcrypt.compareSync(password, user.password_hash);
   if (!valid) {
     return new Response('Unauthorized', { status: 401 });
+  }
+
+  // Get provider for this user
+  let provider;
+  try {
+    provider = requireProvider(user.provider);
+  } catch (e) {
+    return new Response(`Unknown provider: ${user.provider}`, { status: 500 });
   }
 
   // Extract IP from query param or auto-detect from headers
@@ -72,7 +80,10 @@ export const GET: APIRoute = async ({ request }) => {
 
   for (const domain of domainsToUpdate) {
     try {
-      await updateDynDNSRRset(user.hetzner_api_key, String(domain.zone_id), domain.record_name, clientIp, 'A');
+      // Pass provider-specific identifiers
+      // Hetzner: uses zone_id + record_name
+      // DigitalOcean: uses domain name (zone_id) + record_id
+      await provider.updateDynDNSRRset(user.api_key, String(domain.zone_id), domain.record_id || domain.record_name, clientIp, 'A');
       db.prepare('INSERT INTO update_logs (dyndns_user_id, domain, ip, success, message) VALUES (?, ?, ?, ?, ?)')
         .run(user.id, domain.domain, clientIp, 1, 'Updated');
       db.prepare('UPDATE domains SET last_ip = ?, last_updated = ? WHERE id = ?')

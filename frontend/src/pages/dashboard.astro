@@ -2,8 +2,29 @@
 import Layout from '../layouts/Layout.astro';
 import { requireAdmin, clearSessionCookie } from '../lib/auth.js';
 import { db } from '../lib/db.js';
+import { getProviders } from '../lib/providers/index.js';
 
 export const prerender = false;
+
+interface DynDnsUser {
+  id: number;
+  username: string;
+  provider: string;
+  api_key: string;
+  description: string | null;
+  created_at: string;
+  domain_count: number;
+}
+
+interface UpdateLog {
+  id: number;
+  dyndns_user_id: number;
+  domain: string;
+  ip: string;
+  success: number;
+  message: string | null;
+  created_at: string;
+}
 
 let admin;
 try {
@@ -31,17 +52,22 @@ const dyndnsUsers = db.prepare(`
   LEFT JOIN domains d ON du.id = d.dyndns_user_id
   GROUP BY du.id
   ORDER BY du.created_at DESC
-`).all();
+`).all() as DynDnsUser[];
+
+// Build provider lookup
+const providers = getProviders();
+const providerMap: Record<string, { name: string; displayName: string; apiKeyLabel: string }> = {};
+providers.forEach(p => { providerMap[p.name] = p; });
 
 // Get recent logs for each user (last 5 entries)
-const userLogs: Record<number, any[]> = {};
+const userLogs: Record<number, UpdateLog[]> = {};
 dyndnsUsers.forEach(user => {
   userLogs[user.id] = db.prepare(`
     SELECT * FROM update_logs
     WHERE dyndns_user_id = ?
     ORDER BY created_at DESC
     LIMIT 5
-  `).all(user.id);
+  `).all(user.id) as UpdateLog[];
 });
 
 // Check for success message in query params
@@ -52,8 +78,8 @@ const successMessage = Astro.url.searchParams.get('success');
   <div style="max-width: 1100px; margin: 0 auto; padding: 10px 0 30px 0;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
       <div>
-        <h1 style="margin-bottom: 6px; color: var(--color-primary);">DynDNS Dashboard</h1>
-        <p style="opacity: 0.7;">Manage DynDNS users, domains, and Hetzner API keys.</p>
+        <h1 style="margin-bottom: 6px; color: var(--color-primary);">Dashboard</h1>
+        <p style="opacity: 0.7;">Manage DynDNS users, domains, and DNS provider API keys.</p>
       </div>
       <div style="display: flex; gap: 12px; align-items: center;">
         <span style="opacity: 0.7; font-size: 14px;">Signed in as <strong>{admin.username}</strong></span>
@@ -83,9 +109,9 @@ const successMessage = Astro.url.searchParams.get('success');
               <div>
                 <h3 style="margin: 0 0 6px 0; color: var(--color-primary);">{user.username}</h3>
                 {user.description && <p style="margin: 0 0 6px 0; opacity: 0.75;">{user.description}</p>}
-                <div style="display: flex; gap: 14px; font-size: 13px; opacity: 0.75;">
+                <div style="display: flex; gap: 14px; font-size: 13px; opacity: 0.75; flex-wrap: wrap;">
                   <span>📍 {user.domain_count} {user.domain_count === 1 ? 'domain' : 'domains'}</span>
-                  <span>🔑 API key stored</span>
+                  <span>☁️ {providerMap[user.provider]?.displayName || user.provider}</span>
                   <span>📅 {new Date(user.created_at).toLocaleDateString()}</span>
                 </div>
               </div>

@@ -116,7 +116,7 @@ export function getSessionIdFromCookie(cookieHeader) {
   if (!cookieHeader) return null;
 
   const cookies = cookieHeader.split(';').map(c => c.trim());
-  const sessionCookie = cookies.find(c => c.startsWith('sessionId='));
+  const sessionCookie = cookies.find(c => c.startsWith('dyndns_session='));
   
   if (sessionCookie) {
     return sessionCookie.split('=')[1];

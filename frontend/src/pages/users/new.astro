@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { requireAdmin } from '../../lib/auth.js';
 import { db } from '../../lib/db.js';
+import { getProviderOptions } from '../../lib/providers/index.js';
 import bcrypt from 'bcryptjs';
 
 export const prerender = false;
@@ -12,6 +13,7 @@ try {
   return Astro.redirect('/');
 }
 
+const providerOptions = getProviderOptions();
 const formData = Astro.request.method === 'POST' ? await Astro.request.formData() : null;
 let error = '';
 let success = '';
@@ -19,11 +21,12 @@ let success = '';
 if (formData) {
   const username = (formData.get('username') || '').toString().trim();
   const password = (formData.get('password') || '').toString();
+  const provider = (formData.get('provider') || '').toString().trim();
   const apiKey = (formData.get('apiKey') || '').toString().trim();
   const description = (formData.get('description') || '').toString().trim();
 
-  if (!username || !password || !apiKey) {
-    error = 'Username, password, and API key are required.';
+  if (!username || !password || !provider || !apiKey) {
+    error = 'Username, password, provider, and API key are required.';
   } else {
     const existing = db.prepare('SELECT id FROM dyndns_users WHERE username = ?').get(username);
     if (existing) {
@@ -31,10 +34,10 @@ if (formData) {
     } else {
       const passwordHash = bcrypt.hashSync(password, 10);
       const insert = db.prepare(`
-        INSERT INTO dyndns_users (username, password_hash, hetzner_api_key, description)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO dyndns_users (username, password_hash, provider, api_key, description)
+        VALUES (?, ?, ?, ?, ?)
       `);
-      const info = insert.run(username, passwordHash, apiKey, description || null);
+      const info = insert.run(username, passwordHash, provider, apiKey, description || null);
       success = 'DynDNS user created. You can now add domains.';
       return Astro.redirect(`/users/${info.lastInsertRowid}`);
     }
@@ -46,7 +49,7 @@ if (formData) {
   <div style="max-width: 700px; margin: 0 auto; padding: 10px 0 30px 0;">
     <a href="/dashboard" style="text-decoration: none; color: var(--text-color); opacity: 0.7;">← Back to dashboard</a>
     <h1 style="margin: 12px 0 8px 0;">Create DynDNS User</h1>
-    <p style="opacity: 0.7; margin-bottom: 20px;">Set credentials and Hetzner API key for this DynDNS client.</p>
+    <p style="opacity: 0.7; margin-bottom: 20px;">Set credentials, choose a DNS provider, and provide the API key.</p>
 
     {error && <div class="alert error">{error}</div>}
     {success && <div class="alert success">{success}</div>}
@@ -63,8 +66,18 @@ if (formData) {
       </label>
 
       <label class="input-label">
-        Hetzner API Key
-        <input name="apiKey" placeholder="xxxxxxxxxxxxxx" required />
+        DNS Provider
+        <select name="provider" required>
+          <option value="">Select a provider...</option>
+          {providerOptions.map(opt => (
+            <option value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </label>
+
+      <label class="input-label">
+        API Key / Token
+        <input name="apiKey" placeholder="Your API token" required />
       </label>
 
       <label class="input-label">

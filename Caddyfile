@@ -1,5 +1,5 @@
-{$DOMAIN_DYNDNS} {
-    reverse_proxy dyndns:4321
+{$DOMAIN_DYNDNS_UPDATER} {
+    reverse_proxy dyndns-web:4321
     
     encode gzip
     

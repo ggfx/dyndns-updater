@@ -84,15 +84,15 @@ export async function requireAdmin(request) {
 }
 
 /**
- * Set session cookie
+ * Create session cookie (no Max-Age = session cookie, deleted on browser close)
  */
 export function setSessionCookie(sessionId) {
-  return `sessionId=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${30 * 60}`;
+  return `dyndns_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict`;
 }
 
 /**
  * Clear session cookie
  */
 export function clearSessionCookie() {
-  return 'sessionId=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0';
+  return 'dyndns_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0';
 }

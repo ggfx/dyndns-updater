@@ -1,15 +1,23 @@
-# DynDNS Updater (Astro SSR)
+# DynDNS Updater middleware
 
-Self-hosted Dynamic DNS manager using Hetzner Cloud DNS (zones + rrsets). Single Astro SSR app with SQLite and Redis for sessions.
+Self-hosted Dynamic DNS manager with support for multiple DNS providers.
+
+## Supported Providers
+
+- **Hetzner Cloud DNS** - Zones + records management
+- **DigitalOcean DNS** - Domain + records management
+
+Easily extensible: add new providers by creating a new module in `lib/providers/`.
 
 ## Features
 
-- Admin GUI (create first admin, login, manage DynDNS users and domains)
-- DynDNS endpoint with Basic Auth (`/dyndns`), standard `hostname` and `myip` params
-- Hetzner Cloud DNS API integration (zones/rrsets). Auto-resolves zone + record name from FQDN
+- Single Astro SSR app with SQLite storage (WAL) and Redis for sessions
+- Management GUI (create first admin, login, manage DynDNS users with provider selection, API keys and domains)
+- DynDNS endpoint with Basic Auth (`/nic/update`), standard `hostname` and `myip` params
+- Multi-provider DNS API integration - auto-resolves zone/domain + record name from FQDN
 - SQLite storage (WAL) for admins, dyndns users, domains, update logs
-- Redis sessions, 30-minute TTL with refresh on activity
-- Dashboard shows last 5 update logs per user
+- Dashboard shows last 5 update logs per user and their DNS provider
+- Provider-agnostic architecture for easy extensibility
 
 ## Project Structure
 
@@ -21,8 +29,8 @@ Self-hosted Dynamic DNS manager using Hetzner Cloud DNS (zones + rrsets). Single
 │  │  │  ├─ index.astro     # Login / setup redirect
 │  │  │  ├─ setup.astro     # First admin setup
 │  │  │  ├─ dashboard.astro # Admin dashboard + recent logs
-│  │  │  ├─ users/          # DynDNS user CRUD + domain linking
-│  │  │  └─ dyndns.ts       # DynDNS update endpoint (GET)
+│  │  │  ├─ nic/update.ts   # DynDNS update endpoint (GET)
+│  │  │  └─ users/          # DynDNS user CRUD + domain linking
 │  │  └─ lib/               # db, auth, session, hetzner client
 │  ├─ astro.config.mjs      # Node adapter (standalone)
 │  ├─ Dockerfile            # Production image
@@ -48,21 +56,13 @@ On first run, you’ll be redirected to `/setup` to create the initial admin.
 ## DynDNS Endpoint
 
 - Update all domains (IP auto-detect):
-   - `GET /dyndns`
+   - `GET /nic/update`
 - Update all domains with explicit IP:
-   - `GET /dyndns?myip=1.2.3.4`
+   - `GET /nic/update?myip=1.2.3.4`
 - Update specific hostname:
-   - `GET /dyndns?hostname=dyndns.example.com&myip=1.2.3.4`
+   - `GET /nic/update?hostname=dyndns.example.com&myip=1.2.3.4`
 
 Auth: HTTP Basic Auth (username/password you created in the GUI)
-
-## Hetzner Cloud DNS
-
-- Uses `https://api.hetzner.cloud/v1` zones/rrsets endpoints (https://docs.hetzner.cloud/reference/cloud#tag/zones)
-
-## Database
-
-- SQLite (better-sqlite3), file at `frontend/data/dyndns.db`
 
 ## Production (Docker + Caddy)
 
@@ -73,12 +73,12 @@ Auth: HTTP Basic Auth (username/password you created in the GUI)
 ### Configure
 1. Create a `.env` next to `docker-compose.prod.yml`:
    ```
-   DOMAIN_DYNDNS=dyndns.example.com
+   DOMAIN_DYNDNS_UPDATER=dyndns.example.com
    ```
-2. Ensure the domain is referenced in Caddy via `{$DOMAIN_DYNDNS}` in [Caddyfile](Caddyfile):
+2. Ensure the domain is referenced in Caddy via `{$DOMAIN_DYNDNS_UPDATER}` in [Caddyfile](Caddyfile):
    ```
-   {$DOMAIN_DYNDNS} {
-     reverse_proxy dyndns:4321
+   {$DOMAIN_DYNDNS_UPDATER} {
+     reverse_proxy dyndns-web:4321
    }
    ```
 3. Verify volumes in [docker-compose.prod.yml](docker-compose.prod.yml) to persist SQLite at `./frontend/data`.
@@ -89,40 +89,38 @@ Auth: HTTP Basic Auth (username/password you created in the GUI)
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-- App: `https://$DOMAIN_DYNDNS/`
-- DynDNS: `https://$DOMAIN_DYNDNS/dyndns`
+- App: `https://$DOMAIN_DYNDNS_UPDATER/`
+- DynDNS: `https://$DOMAIN_DYNDNS_UPDATER/nic/update`
 
 ### First-Time Setup
 - Open the site and complete `/setup` to create the first admin
 
-### Add a DynDNS User and Domain
-- In the GUI, create a DynDNS user (username/password + Hetzner API key)
-- Add a domain (FQDN) and initial IP; zone and record name auto-resolve via Hetzner Cloud DNS rrsets
+### Add a DynDNS User, choose a Provider, add Domain(s)
+- In the GUI, create a DynDNS user/password which is used for Basic Auth to access the DynDNS Endpoint `/nic/update`
+- Choose from the available provider list and add your API key / Token
+- Add a domain (FQDN) and initial IP; zone and record name auto-resolve via the providers' API
 
 ### Update Examples
 - Curl (Linux/macOS):
   - All domains, IP auto-detect:
     ```
-    curl -u user:pass https://$DOMAIN_DYNDNS/dyndns
+    curl -u user:pass https://$DOMAIN_DYNDNS_UPDATER/nic/update
     ```
   - Specific hostname with IP:
     ```
-    curl -u user:pass "https://$DOMAIN_DYNDNS/dyndns?hostname=host.example.com&myip=1.2.3.4"
+    curl -u user:pass "https://$DOMAIN_DYNDNS_UPDATER/nic/update?hostname=host.example.com&myip=1.2.3.4"
     ```
 - PowerShell (Windows):
   ```
   $pair = "user:pass"
   $b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($pair))
-  Invoke-WebRequest -Uri "https://$DOMAIN_DYNDNS/dyndns?myip=1.2.3.4" -Headers @{ Authorization = "Basic $b64" }
+  Invoke-WebRequest -Uri "https://$DOMAIN_DYNDNS_UPDATER/nic/update?myip=1.2.3.4" -Headers @{ Authorization = "Basic $b64" }
   ```
 
 ### Notes
-- Uses Hetzner Cloud DNS zones/rrsets `set_records` to update A records
 - Recent updates appear on the dashboard (last 5 per user)
-- Data persists in `./frontend/data` (SQLite)
 
 ## Security
-
-- Secrets: provide Hetzner API key per DynDNS user via the GUI
+- Secrets: Provider API keys per DynDNS user via the GUI
 - Reverse proxy (Caddy) auto-provisions TLS (Let's Encrypt)
-
+- Data persists locally in `./frontend/data/dyndns.db` (SQLite)

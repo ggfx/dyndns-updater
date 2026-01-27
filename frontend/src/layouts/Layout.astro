@@ -20,10 +20,25 @@ const { title, description = 'DynDNS Updater Service' } = Astro.props;
     <script is:inline>
       // Prevent flash by setting theme immediately (before any rendering)
       (function() {
-        const savedTheme = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-        document.documentElement.setAttribute('data-theme', theme);
+        const savedTheme = localStorage.getItem('theme') || 'system';
+        
+        function applyTheme(themeMode) {
+          if (themeMode === 'system') {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+          } else {
+            document.documentElement.setAttribute('data-theme', themeMode);
+          }
+        }
+        
+        applyTheme(savedTheme);
+        
+        // Listen for system theme changes if using system mode
+        if (savedTheme === 'system') {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+          });
+        }
       })();
     </script>
     <style is:inline>
@@ -179,11 +194,179 @@ const { title, description = 'DynDNS Updater Service' } = Astro.props;
         background-color: #f5f5f5;
         font-weight: 600;
       }
+
+      /* Navigation Bar */
+      nav {
+        background: var(--card-bg);
+        border-bottom: 1px solid var(--border-color);
+        padding: 0;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        transition: background-color 0.3s, border-color 0.3s;
+      }
+
+      .nav-container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 60px;
+        padding: 0 20px;
+      }
+
+      .nav-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--color-primary);
+        text-decoration: none;
+        flex-shrink: 0;
+      }
+
+      .theme-switcher {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-shrink: 0;
+        margin-left: auto;
+      }
+
+      .theme-toggle-btn {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-color);
+        padding: 8px 12px;
+        font-size: 18px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+      }
+
+      .theme-toggle-btn:hover {
+        background: var(--bg-color);
+        border-color: var(--color-primary);
+      }
+
+      .theme-reset-btn {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-color);
+        padding: 6px 10px;
+        font-size: 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: none;
+        white-space: nowrap;
+      }
+
+      .theme-reset-btn.visible {
+        display: block;
+      }
+
+      .theme-reset-btn:hover {
+        background: var(--bg-color);
+        border-color: var(--color-primary);
+      }
+
+      @media (max-width: 768px) {
+        .nav-container {
+          padding: 0 15px;
+        }
+        
+        .nav-title {
+          font-size: 16px;
+        }
+        
+        .theme-toggle-btn {
+          padding: 6px 10px;
+          min-width: 40px;
+          min-height: 40px;
+          font-size: 16px;
+        }
+        
+        .theme-reset-btn {
+          font-size: 11px;
+          padding: 5px 8px;
+        }
+      }
     </style>
   </head>
   <body>
+    <nav>
+      <div class="nav-container">
+        <a href="/dashboard" class="nav-title">DynDNS Updater</a>
+        <div class="theme-switcher">
+          <button class="theme-reset-btn" id="resetThemeBtn" title="Reset to system theme">System</button>
+          <button class="theme-toggle-btn" id="themeToggleBtn" title="Toggle theme">
+            <span id="themeIcon">☀️</span>
+          </button>
+        </div>
+      </div>
+    </nav>
     <main>
       <slot />
     </main>
+    <script is:inline>
+      // Theme switcher functionality
+      (function() {
+        const toggleBtn = document.getElementById('themeToggleBtn');
+        const resetBtn = document.getElementById('resetThemeBtn');
+        const themeIcon = document.getElementById('themeIcon');
+        const currentTheme = localStorage.getItem('theme') || 'system';
+        
+        function getCurrentActualTheme() {
+          return document.documentElement.getAttribute('data-theme');
+        }
+        
+        function updateUI(themeMode) {
+          const actualTheme = getCurrentActualTheme();
+          
+          // Update icon based on actual displayed theme
+          if (actualTheme === 'dark') {
+            themeIcon.textContent = '🌙';
+            toggleBtn.title = 'Switch to light theme';
+          } else {
+            themeIcon.textContent = '☀️';
+            toggleBtn.title = 'Switch to dark theme';
+          }
+          
+          // Show reset button only if not on system mode
+          if (themeMode === 'system') {
+            resetBtn.classList.remove('visible');
+          } else {
+            resetBtn.classList.add('visible');
+          }
+        }
+        
+        updateUI(currentTheme);
+        
+        // Toggle between light and dark
+        toggleBtn.addEventListener('click', () => {
+          const actualTheme = getCurrentActualTheme();
+          const newTheme = actualTheme === 'dark' ? 'light' : 'dark';
+          
+          localStorage.setItem('theme', newTheme);
+          document.documentElement.setAttribute('data-theme', newTheme);
+          updateUI(newTheme);
+        });
+        
+        // Reset to system theme
+        resetBtn.addEventListener('click', () => {
+          localStorage.setItem('theme', 'system');
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+          updateUI('system');
+        });
+      })();
+    </script>
   </body>
 </html>
