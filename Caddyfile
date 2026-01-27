@@ -1,0 +1,9 @@
+{$DOMAIN_DYNDNS} {
+    reverse_proxy dyndns:4321
+    
+    encode gzip
+    
+    log {
+        output file /var/log/caddy/access.log
+    }
+}

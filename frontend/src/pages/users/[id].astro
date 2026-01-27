@@ -1,0 +1,233 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { requireAdmin } from '../../lib/auth.js';
+import { db } from '../../lib/db.js';
+import { ensureRRsetForDomain } from '../../lib/hetzner.js';
+import bcrypt from 'bcryptjs';
+
+export const prerender = false;
+
+let admin;
+try {
+  admin = await requireAdmin(Astro.request);
+} catch (error) {
+  return Astro.redirect('/');
+}
+
+const userId = Number(Astro.params.id);
+if (!userId) {
+  return Astro.redirect('/dashboard');
+}
+
+let user = db.prepare('SELECT * FROM dyndns_users WHERE id = ?').get(userId);
+if (!user) {
+  return Astro.redirect('/dashboard');
+}
+
+const formData = Astro.request.method === 'POST' ? await Astro.request.formData() : null;
+let error = '';
+let success = '';
+
+if (formData) {
+  const action = (formData.get('action') || '').toString();
+  
+  if (action === 'update-configuration') {
+    const newUsername = (formData.get('username') || '').toString().trim();
+    const password = (formData.get('password') || '').toString().trim();
+    const cloudApiKey = (formData.get('cloudApiKey') || '').toString().trim();
+    const description = (formData.get('description') || '').toString().trim();
+
+    // Validate username
+    if (!newUsername) {
+      error = 'Username is required.';
+    } else if (newUsername !== user.username) {
+      // Check for duplicate username only if changed
+      const existing = db.prepare('SELECT id FROM dyndns_users WHERE username = ? AND id != ?').get(newUsername, userId);
+      if (existing) {
+        error = 'Username already exists.';
+      }
+    }
+
+    // Validate API key
+    if (!error && !cloudApiKey) {
+      error = 'Cloud API Key is required.';
+    }
+
+    // Validate password if provided
+    if (!error && password && password.length < 6) {
+      error = 'Password must be at least 6 characters.';
+    }
+
+    // Update if no errors
+    if (!error) {
+      let updateFields = ['username = ?', 'hetzner_api_key = ?', 'description = ?'];
+      let updateValues: any[] = [newUsername, cloudApiKey, description || null];
+      
+      if (password) {
+        const passwordHash = bcrypt.hashSync(password, 10);
+        updateFields.push('password_hash = ?');
+        updateValues.push(passwordHash);
+      }
+      
+      updateValues.push(userId);
+      db.prepare(`UPDATE dyndns_users SET ${updateFields.join(', ')} WHERE id = ?`)
+        .run(...updateValues);
+      success = 'Configuration saved successfully.';
+      
+      // Refresh user data
+      user = db.prepare('SELECT * FROM dyndns_users WHERE id = ?').get(userId);
+    }
+  }
+
+  if (action === 'add-domain') {
+    const domain = (formData.get('domain') || '').toString().trim().toLowerCase();
+    const initialIp = (formData.get('initialIp') || '').toString().trim();
+    if (!domain || !initialIp) {
+      error = 'Domain and initial IP are required.';
+    } else {
+      try {
+        const { zoneId, recordName, value } = await ensureRRsetForDomain(user.hetzner_api_key, domain, initialIp, 'A');
+        db.prepare(`
+          INSERT INTO domains (dyndns_user_id, domain, zone_id, record_name, last_ip, last_updated)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(userId, domain, String(zoneId), recordName, value, new Date().toISOString());
+        success = 'Domain added and linked to Hetzner zone.';
+      } catch (e) {
+        error = e instanceof Error ? e.message : 'Failed to add domain via Hetzner API';
+      }
+    }
+  }
+
+  if (action === 'delete-domain') {
+    const domainId = Number(formData.get('domainId'));
+    if (domainId) {
+      db.prepare('DELETE FROM domains WHERE id = ? AND dyndns_user_id = ?').run(domainId, userId);
+      success = 'Domain removed.';
+    }
+  }
+  
+  if (action === 'delete-user') {
+    const confirmUsername = (formData.get('confirmUsername') || '').toString().trim();
+    if (confirmUsername !== user.username) {
+      error = 'Username confirmation does not match.';
+    } else {
+      // Delete all domains for this user
+      db.prepare('DELETE FROM domains WHERE dyndns_user_id = ?').run(userId);
+      // Delete all logs for this user
+      db.prepare('DELETE FROM update_logs WHERE dyndns_user_id = ?').run(userId);
+      // Delete the user
+      db.prepare('DELETE FROM dyndns_users WHERE id = ?').run(userId);
+      return Astro.redirect('/dashboard?success=User deleted');
+    }
+  }
+}
+
+// Refresh user after potential updates so UI shows latest values
+user = db.prepare('SELECT * FROM dyndns_users WHERE id = ?').get(userId);
+
+const domains = db.prepare('SELECT * FROM domains WHERE dyndns_user_id = ? ORDER BY id DESC').all(userId);
+---
+
+<Layout title={`User: ${user.username}`}>
+  <div style="max-width: 900px; margin: 0 auto; padding: 10px 0 30px 0; display: grid; gap: 22px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <a href="/dashboard" style="text-decoration: none; color: var(--text-color); opacity: 0.7;">← Back</a>
+        <h1 style="margin: 8px 0 4px 0;">{user.username}</h1>
+        {user.description && <p style="margin: 0 0 6px 0; opacity: 0.75;">{user.description}</p>}
+      </div>
+      <div style="text-align: right; opacity: 0.7; font-size: 14px;">
+        <div>Created: {new Date(user.created_at).toLocaleDateString()}</div>
+      </div>
+    </div>
+
+    {error && <div class="alert error">{error}</div>}
+    {success && <div class="alert success">{success}</div>}
+
+    <section style="padding: 18px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--card-bg);">
+      <h3 style="margin-top: 0;">Basic Configuration</h3>
+      <form method="post" style="display: grid; gap: 16px;">
+        <input type="hidden" name="action" value="update-configuration" />
+        
+        <div>
+          <h4 style="margin: 0 0 12px 0; opacity: 0.85;">User Credentials</h4>
+          <div style="display: grid; gap: 12px;">
+            <label class="input-label">
+              Username
+              <input name="username" value={user.username} required />
+            </label>
+            <label class="input-label">
+              Password (leave blank to keep current)
+              <input name="password" type="password" />
+            </label>
+          </div>
+        </div>
+
+        <div style="padding-top: 12px; border-top: 1px solid var(--border-color);">
+          <h4 style="margin: 0 0 12px 0; opacity: 0.85;">Configure Hetzner Cloud API</h4>
+          <div style="display: grid; gap: 12px;">
+            <label class="input-label">
+              Cloud API Key
+              <input name="cloudApiKey" value={user.hetzner_api_key || ''} required />
+            </label>
+            <label class="input-label">
+              Description (optional)
+              <input name="description" value={user.description || ''} />
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="primary" style="width: fit-content; margin-top: 8px;">Save Configuration</button>
+      </form>
+    </section>
+
+    <section style="padding: 18px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--card-bg);">
+      <h3 style="margin-top: 0;">Domains</h3>
+      <p style="opacity: 0.7; margin-top: 0;">Enter a domain and its initial IP address. Zone and record name will be resolved and stored read-only.</p>
+      <form method="post" style="display: grid; gap: 12px; margin-bottom: 16px;">
+        <input type="hidden" name="action" value="add-domain" />
+        <label class="input-label">
+          Domain
+          <input name="domain" placeholder="dyndns.example.com" required />
+        </label>
+        <label class="input-label">
+          Initial IP Address (IPv4)
+          <input name="initialIp" type="text" placeholder="192.168.1.1" required />
+        </label>
+        <button type="submit" class="secondary" style="width: fit-content;">Add domain</button>
+      </form>
+
+      {domains.length === 0 ? (
+        <p style="opacity: 0.75;">No domains yet.</p>
+      ) : (
+        <div style="display: grid; gap: 10px;">
+          {domains.map(domain => (
+            <form method="post" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color);">
+              <div>
+                <div style="font-weight: 600;">{domain.domain}</div>
+                <div style="opacity: 0.7; font-size: 13px;">Zone ID: {domain.zone_id} • Record: {domain.record_name}</div>
+                {domain.last_ip && <div style="opacity: 0.7; font-size: 13px;">IP: {domain.last_ip}</div>}
+              </div>
+              <div>
+                <input type="hidden" name="action" value="delete-domain" />
+                <input type="hidden" name="domainId" value={domain.id} />
+                <button type="submit" class="secondary" style="background: transparent; color: var(--text-color); border: 1px solid var(--border-color);">Remove</button>
+              </div>
+            </form>
+          ))}
+        </div>
+      )}
+    </section>
+
+    <section style="padding: 18px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--card-bg);">
+      <h3 style="margin-top: 0; color: #ef4444;">Danger Zone</h3>
+      <p style="opacity: 0.7; margin-top: 0;">Delete this DynDNS user and all associated domains and logs. This action cannot be undone. To confirm, enter the username below.</p>
+      <form method="post" style="display: grid; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+        <input type="hidden" name="action" value="delete-user" />
+        <label class="input-label">
+          Enter username to confirm deletion: <strong>{user.username}</strong>
+          <input name="confirmUsername" placeholder={user.username} required />
+        </label>
+        <button type="submit" class="secondary" style="background: #ef4444; color: white; border: 1px solid #dc2626; width: fit-content;" onclick="return confirm('Are you sure? This will delete the user, all domains, and all logs.');">Delete User</button>
+      </form>
+    </section>

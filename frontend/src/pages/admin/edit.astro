@@ -1,0 +1,135 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { requireAdmin, setSessionCookie } from '../../lib/auth.js';
+import { db } from '../../lib/db.js';
+import bcrypt from 'bcryptjs';
+
+export const prerender = false;
+
+let admin;
+try {
+  admin = await requireAdmin(Astro.request);
+} catch (error) {
+  return Astro.redirect('/');
+}
+
+let error = '';
+let success = '';
+
+const formData = Astro.request.method === 'POST' ? await Astro.request.formData() : null;
+
+if (formData) {
+  const action = (formData.get('action') || '').toString();
+  
+  if (action === 'update-username') {
+    const newUsername = (formData.get('newUsername') || '').toString().trim();
+    const currentPassword = (formData.get('currentPassword') || '').toString();
+
+    if (!newUsername) {
+      error = 'Username is required.';
+    } else if (newUsername === admin.username) {
+      error = 'New username must be different from current username.';
+    } else if (!bcrypt.compareSync(currentPassword, admin.password_hash)) {
+      error = 'Current password is incorrect.';
+    } else {
+      // Check for duplicate username
+      const existing = db.prepare('SELECT id FROM admins WHERE username = ? AND id != ?').get(newUsername, admin.id);
+      if (existing) {
+        error = 'Username already exists.';
+      } else {
+        db.prepare('UPDATE admins SET username = ? WHERE id = ?').run(newUsername, admin.id);
+        success = 'Username updated successfully.';
+        // Refresh admin data
+        admin = db.prepare('SELECT id, username, password_hash, created_at FROM admins WHERE id = ?').get(admin.id);
+      }
+    }
+  }
+  
+  if (action === 'update-password') {
+    const currentPassword = (formData.get('currentPassword') || '').toString();
+    const newPassword = (formData.get('newPassword') || '').toString();
+    const confirmPassword = (formData.get('confirmPassword') || '').toString();
+
+    // Verify current password
+    if (!bcrypt.compareSync(currentPassword, admin.password_hash)) {
+      error = 'Current password is incorrect.';
+    } else if (newPassword !== confirmPassword) {
+      error = 'New passwords do not match.';
+    } else if (newPassword.length < 6) {
+      error = 'Password must be at least 6 characters.';
+    } else {
+      const passwordHash = bcrypt.hashSync(newPassword, 10);
+      db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(passwordHash, admin.id);
+      success = 'Password updated successfully.';
+    }
+  }
+}
+
+// Refresh admin data
+admin = db.prepare('SELECT id, username, created_at FROM admins WHERE id = ?').get(admin.id);
+---
+
+<Layout title="Edit Admin">
+  <div style="max-width: 600px; margin: 0 auto; padding: 10px 0 30px 0;">
+    <div>
+      <a href="/dashboard" style="text-decoration: none; color: var(--text-color); opacity: 0.7;">← Back to Dashboard</a>
+      <h1 style="margin: 8px 0 4px 0;">Admin Settings</h1>
+      <p style="margin: 0; opacity: 0.75;">Manage your admin account.</p>
+    </div>
+
+    {error && <div class="alert error" style="margin-top: 16px;">{error}</div>}
+    {success && <div class="alert success" style="margin-top: 16px;">{success}</div>}
+
+    <section style="margin-top: 24px; padding: 18px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--card-bg);">
+      <h3 style="margin-top: 0;">Account Information</h3>
+      <div style="display: grid; gap: 12px; margin-bottom: 16px;">
+        <div>
+          <label style="display: block; opacity: 0.7; font-size: 14px; margin-bottom: 4px;">Username</label>
+          <div style="padding: 10px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 6px;">{admin.username}</div>
+        </div>
+        <div>
+          <label style="display: block; opacity: 0.7; font-size: 14px; margin-bottom: 4px;">Created</label>
+          <div style="padding: 10px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 6px;">{new Date(admin.created_at).toLocaleDateString()}</div>
+        </div>
+      </div>
+    </section>
+
+    <section style="margin-top: 24px; padding: 18px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--card-bg);">
+      <h3 style="margin-top: 0;">Change Username</h3>
+      <p style="opacity: 0.7; margin-top: 0;">Update your admin username.</p>
+      <form method="post" style="display: grid; gap: 12px;">
+        <input type="hidden" name="action" value="update-username" />
+        <label class="input-label">
+          New Username
+          <input name="newUsername" required />
+        </label>
+        <label class="input-label">
+          Current Password (to confirm)
+          <input name="currentPassword" type="password" required />
+        </label>
+        <button type="submit" class="primary" style="width: fit-content;">Update Username</button>
+      </form>
+    </section>
+
+    <section style="margin-top: 24px; padding: 18px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--card-bg);">
+      <h3 style="margin-top: 0;">Change Password</h3>
+      <p style="opacity: 0.7; margin-top: 0;">Enter your current password and your new password.</p>
+      <form method="post" style="display: grid; gap: 12px;">
+        <input type="hidden" name="action" value="update-password" />
+        <label class="input-label">
+          Current Password
+          <input name="currentPassword" type="password" required />
+        </label>
+        <label class="input-label">
+          New Password
+          <input name="newPassword" type="password" required />
+        </label>
+        <label class="input-label">
+          Confirm New Password
+          <input name="confirmPassword" type="password" required />
+        </label>
+        <button type="submit" class="primary" style="width: fit-content;">Update Password</button>
+      </form>
+    </section>
+  </div>
+</Layout>

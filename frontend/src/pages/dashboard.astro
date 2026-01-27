@@ -1,0 +1,119 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { requireAdmin, clearSessionCookie } from '../lib/auth.js';
+import { db } from '../lib/db.js';
+
+export const prerender = false;
+
+let admin;
+try {
+  admin = await requireAdmin(Astro.request);
+} catch (error) {
+  return Astro.redirect('/');
+}
+
+// Handle logout via query param
+if (Astro.url.searchParams.get('action') === 'logout') {
+  const { logoutAdmin } = await import('../lib/auth.js');
+  await logoutAdmin(Astro.request);
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: '/',
+      'Set-Cookie': clearSessionCookie(),
+    },
+  });
+}
+
+const dyndnsUsers = db.prepare(`
+  SELECT du.*, COUNT(d.id) AS domain_count
+  FROM dyndns_users du
+  LEFT JOIN domains d ON du.id = d.dyndns_user_id
+  GROUP BY du.id
+  ORDER BY du.created_at DESC
+`).all();
+
+// Get recent logs for each user (last 5 entries)
+const userLogs: Record<number, any[]> = {};
+dyndnsUsers.forEach(user => {
+  userLogs[user.id] = db.prepare(`
+    SELECT * FROM update_logs
+    WHERE dyndns_user_id = ?
+    ORDER BY created_at DESC
+    LIMIT 5
+  `).all(user.id);
+});
+
+// Check for success message in query params
+const successMessage = Astro.url.searchParams.get('success');
+---
+
+<Layout title="Dashboard">
+  <div style="max-width: 1100px; margin: 0 auto; padding: 10px 0 30px 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <div>
+        <h1 style="margin-bottom: 6px; color: var(--color-primary);">DynDNS Dashboard</h1>
+        <p style="opacity: 0.7;">Manage DynDNS users, domains, and Hetzner API keys.</p>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <span style="opacity: 0.7; font-size: 14px;">Signed in as <strong>{admin.username}</strong></span>
+        <a href="/admin/edit" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">Edit</a>
+        <a href="?action=logout" style="color: var(--text-color); opacity: 0.7; text-decoration: none;">Logout</a>
+      </div>
+    </div>
+
+    {successMessage && <div class="alert success" style="margin-bottom: 16px;">{successMessage}</div>}
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2 style="margin: 0;">DynDNS Users</h2>
+      <a href="/users/new" style="background: var(--color-primary); color: white; padding: 10px 16px; border-radius: 6px; text-decoration: none; font-weight: 600;">+ Add DynDNS User</a>
+    </div>
+
+    {dyndnsUsers.length === 0 ? (
+      <div style="padding: 40px; text-align: center; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px;">
+        <p style="font-size: 18px; margin-bottom: 8px;">No DynDNS users yet.</p>
+        <p style="opacity: 0.7; margin-bottom: 20px;">Create a user to configure credentials and domains.</p>
+        <a href="/users/new" style="background: var(--color-primary); color: white; padding: 12px 22px; border-radius: 6px; text-decoration: none; font-weight: 600;">Create DynDNS User</a>
+      </div>
+    ) : (
+      <div style="display: grid; gap: 12px;">
+        {dyndnsUsers.map(user => (
+          <div style="display: block; padding: 18px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px;">
+            <a href={`/users/${user.id}`} style="display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: inherit; margin-bottom: 14px;">
+              <div>
+                <h3 style="margin: 0 0 6px 0; color: var(--color-primary);">{user.username}</h3>
+                {user.description && <p style="margin: 0 0 6px 0; opacity: 0.75;">{user.description}</p>}
+                <div style="display: flex; gap: 14px; font-size: 13px; opacity: 0.75;">
+                  <span>📍 {user.domain_count} {user.domain_count === 1 ? 'domain' : 'domains'}</span>
+                  <span>🔑 API key stored</span>
+                  <span>📅 {new Date(user.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+              <span style="color: var(--color-primary); font-size: 18px;">→</span>
+            </a>
+
+            {userLogs[user.id].length > 0 && (
+              <div style="padding-top: 14px; border-top: 1px solid var(--border-color);">
+                <p style="margin: 0 0 10px 0; font-size: 12px; font-weight: 600; opacity: 0.7; text-transform: uppercase;">Recent Updates</p>
+                <div style="display: grid; gap: 8px;">
+                  {userLogs[user.id].map(log => (
+                    <div style={`padding: 10px; border-radius: 6px; font-size: 12px; ${log.success ? 'background: rgba(34,197,94,0.1); color: #22c55e;' : 'background: rgba(239,68,68,0.1); color: #ef4444;'}`}>
+                      <div style="display: flex; justify-content: space-between; gap: 8px;">
+                        <div>
+                          <strong>{log.domain}</strong> 
+                          <span style="opacity: 0.8;">→ {log.ip}</span>
+                        </div>
+                        <span style="opacity: 0.7; white-space: nowrap;">{new Date(log.created_at).toLocaleTimeString()}</span>
+                      </div>
+                      {log.message && <div style="opacity: 0.8; margin-top: 4px;">{log.message}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</Layout>

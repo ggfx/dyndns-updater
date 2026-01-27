@@ -1,0 +1,15 @@
+# Local env
+.env
+
+# Redis & Caddy runtime data
+redis_data/
+caddy/data/
+caddy/config/
+
+# Logs
+*.log
+logs/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

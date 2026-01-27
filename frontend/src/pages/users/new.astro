@@ -1,0 +1,78 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { requireAdmin } from '../../lib/auth.js';
+import { db } from '../../lib/db.js';
+import bcrypt from 'bcryptjs';
+
+export const prerender = false;
+
+try {
+  await requireAdmin(Astro.request);
+} catch (error) {
+  return Astro.redirect('/');
+}
+
+const formData = Astro.request.method === 'POST' ? await Astro.request.formData() : null;
+let error = '';
+let success = '';
+
+if (formData) {
+  const username = (formData.get('username') || '').toString().trim();
+  const password = (formData.get('password') || '').toString();
+  const apiKey = (formData.get('apiKey') || '').toString().trim();
+  const description = (formData.get('description') || '').toString().trim();
+
+  if (!username || !password || !apiKey) {
+    error = 'Username, password, and API key are required.';
+  } else {
+    const existing = db.prepare('SELECT id FROM dyndns_users WHERE username = ?').get(username);
+    if (existing) {
+      error = 'Username already exists.';
+    } else {
+      const passwordHash = bcrypt.hashSync(password, 10);
+      const insert = db.prepare(`
+        INSERT INTO dyndns_users (username, password_hash, hetzner_api_key, description)
+        VALUES (?, ?, ?, ?)
+      `);
+      const info = insert.run(username, passwordHash, apiKey, description || null);
+      success = 'DynDNS user created. You can now add domains.';
+      return Astro.redirect(`/users/${info.lastInsertRowid}`);
+    }
+  }
+}
+---
+
+<Layout title="New DynDNS User">
+  <div style="max-width: 700px; margin: 0 auto; padding: 10px 0 30px 0;">
+    <a href="/dashboard" style="text-decoration: none; color: var(--text-color); opacity: 0.7;">← Back to dashboard</a>
+    <h1 style="margin: 12px 0 8px 0;">Create DynDNS User</h1>
+    <p style="opacity: 0.7; margin-bottom: 20px;">Set credentials and Hetzner API key for this DynDNS client.</p>
+
+    {error && <div class="alert error">{error}</div>}
+    {success && <div class="alert success">{success}</div>}
+
+    <form method="post" style="display: grid; gap: 14px;">
+      <label class="input-label">
+        Username
+        <input name="username" placeholder="dyndns-client" required />
+      </label>
+
+      <label class="input-label">
+        Password
+        <input name="password" type="password" placeholder="Strong password" required />
+      </label>
+
+      <label class="input-label">
+        Hetzner API Key
+        <input name="apiKey" placeholder="xxxxxxxxxxxxxx" required />
+      </label>
+
+      <label class="input-label">
+        Description (optional)
+        <input name="description" placeholder="Laptop at home, router, etc." />
+      </label>
+
+      <button type="submit" class="primary">Create User</button>
+    </form>
+  </div>
+</Layout>
