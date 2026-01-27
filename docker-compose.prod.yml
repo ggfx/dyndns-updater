@@ -1,10 +1,11 @@
 networks:
   dyndns_network:
+    name: dyndns_network
 
 services:
   dyndns-redis:
     image: redis:latest
-#    container_name: redis
+    container_name: dyndns-redis
     restart: unless-stopped
     volumes:
       - ./redis_data:/data
@@ -21,9 +22,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: dyndns-web
     restart: unless-stopped
     environment:
-      - REDIS_HOST=redis
+      - REDIS_HOST=dyndns-redis
       - REDIS_PORT=6379
       - HOST=0.0.0.0
       - PORT=4321
