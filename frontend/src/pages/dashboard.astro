@@ -83,8 +83,10 @@ const successMessage = Astro.url.searchParams.get('success');
       </div>
       <div style="display: flex; gap: 12px; align-items: center;">
         <span style="opacity: 0.7; font-size: 14px;">Signed in as <strong>{admin.username}</strong></span>
-        <a href="/admin/edit" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">Edit</a>
-        <a href="?action=logout" style="color: var(--text-color); opacity: 0.7; text-decoration: none;">Logout</a>
+        <span style="flex-shrink: 0;">
+          <a href="/admin/edit" title="Edit profile" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: transparent; border: 1px solid var(--border-color); border-radius: 6px; text-decoration: none; font-size: 18px; transition: all 0.2s;">⚙️</a>
+        </span>
+        <a href="?action=logout" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; transition: all 0.2s; white-space: nowrap;">Logout</a>
       </div>
     </div>
 

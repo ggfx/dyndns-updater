@@ -1,9 +1,11 @@
 {$DOMAIN_DYNDNS_UPDATER} {
     reverse_proxy dyndns-web:4321
     
-    encode gzip
+    encode
     
     log {
-        output file /var/log/caddy/access.log
+        output stdout
+        format console
+        level INFO
     }
 }

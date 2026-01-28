@@ -1,9 +1,18 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "10"
+
+networks:
+  dyndns_network:
+    name: dyndns_network
+
 services:
-  redis:
+  dyndns-redis:
     image: redis:latest
-#    container_name: redis
-    ports:
-      - "6379:6379"
+    container_name: dyndns-redis
+    restart: unless-stopped
     volumes:
       - ./redis_data:/data
     command: redis-server --save 60 1
@@ -11,4 +20,42 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
-      retries: 5
+      retries: 5    
+    logging: *default-logging
+    networks:
+      - dyndns_network
+
+  dyndns-web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dyndns-web
+    restart: unless-stopped
+    environment:
+      - REDIS_HOST=dyndns-redis
+      - REDIS_PORT=6379
+      - HOST=0.0.0.0
+      - PORT=4321
+    volumes:
+      - ./frontend/data:/app/data
+    depends_on:
+      - dyndns-redis
+    logging: *default-logging
+    networks:
+      - dyndns_network
+
+  caddy:
+    image: caddy:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+    environment:
+      DOMAIN_DYNDNS_UPDATER: ${DOMAIN_DYNDNS_UPDATER:?DOMAIN_DYNDNS_UPDATER environment variable is required}
+    logging: *default-logging
+    networks:
+      - dyndns_network

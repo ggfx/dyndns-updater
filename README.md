@@ -37,7 +37,7 @@ Easily extensible: add new providers by creating a new module in `lib/providers/
 │  ├─ astro.config.mjs      # Node adapter (standalone)
 │  ├─ Dockerfile            # Production image
 │  └─ package.json
-├─ docker-compose.prod.yml  # Redis + app + Caddy
+├─ docker-compose.yml       # Redis + app + Caddy
 ├─ Caddyfile                # Reverse proxy + TLS
 └─ README.md
 ```
@@ -74,29 +74,49 @@ Use this endpoint in your internet router, such as a FRITZ!Box (example router):
 
 ### Prerequisites
 - Docker and Docker Compose installed
-- A public domain pointing to your server
+- **For public servers**: A domain name pointing to your server's public IP
+- **For local networks**: No domain required - use HTTP on port 80
 
 ### Configure
-1. Create a `.env` next to `docker-compose.prod.yml`:
-   ```
-   DOMAIN_DYNDNS_UPDATER=dyndns.example.com
-   ```
-2. Ensure the domain is referenced in Caddy via `{$DOMAIN_DYNDNS_UPDATER}` in [Caddyfile](Caddyfile):
+
+Create a `.env` file next to `docker-compose.yml`:
+
+**Option 1: Public Server with Domain (HTTPS with automatic SSL)**
+```
+DOMAIN_DYNDNS_UPDATER=dyndns.example.com
+```
+This will automatically provision SSL certificates via Let's Encrypt and serve over HTTPS on ports 80/443.
+
+**Option 2: Local Network Access (HTTP without SSL)**
+```
+DOMAIN_DYNDNS_UPDATER=:80
+```
+Perfect for running on a local machine, Raspberry Pi, or home server behind a router. Access the service via your local IP address (e.g., `http://192.168.1.100`) without SSL encryption. No domain name or SSL certificates needed.
+
+### Caddyfile Configuration
+
+Ensure the domain is referenced in Caddy via `{$DOMAIN_DYNDNS_UPDATER}` in [Caddyfile](Caddyfile):
    ```
    {$DOMAIN_DYNDNS_UPDATER} {
      reverse_proxy dyndns-web:4321
    }
    ```
-3. Verify volumes in [docker-compose.prod.yml](docker-compose.prod.yml) to persist SQLite at `./frontend/data`.
+
+Verify volumes in [docker-compose.yml](docker-compose.yml) to persist SQLite at `./frontend/data`.
 
 ### Build and Run
 ```bash
 # from repo root
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.yml up -d --build
 ```
 
-- App: `https://$DOMAIN_DYNDNS_UPDATER/`
-- DynDNS: `https://$DOMAIN_DYNDNS_UPDATER/nic/update`
+**Access the service:**
+- With domain (Option 1): `https://dyndns.example.com/`
+- Local network (Option 2): `http://192.168.1.100/` (replace with your local IP)
+
+**DynDNS endpoint:**
+- With domain: `https://dyndns.example.com/nic/update`
+- Local network: `http://192.168.1.100/nic/update`
 
 ### First-Time Setup
 - Open the site and complete `/setup` to create the first admin
