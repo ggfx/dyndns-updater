@@ -145,6 +145,9 @@ docker compose -f docker-compose.yml up -d --build
 
 ### Notes
 - Recent updates appear on the dashboard (last 5 per user)
+- Updater is currently supporting only IPv4 A-record
+- You already need to have a zone/domain name at one of the supported providers to modify them
+- Subdomains will be created automatically if they do not already exist
 
 ## Security
 - Secrets: Provider API keys per DynDNS user via the GUI
