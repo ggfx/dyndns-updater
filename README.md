@@ -1,4 +1,4 @@
-# DynDNS Updater middleware
+# <center>DynDNS Updater middleware</center>
 
 Self-hosted Dynamic DNS manager with support for multiple DNS providers.
 
@@ -18,6 +18,8 @@ Easily extensible: add new providers by creating a new module in `lib/providers/
 - SQLite storage (WAL) for admins, dyndns users, domains, update logs
 - Dashboard shows last 5 update logs per user and their DNS provider
 - Provider-agnostic architecture for easy extensibility
+
+<center><img src="docs/dyndns-dashboard.png" alt="DynDNS Updater Dashboard" style="max-width:100%;" /></center>
 
 ## Project Structure
 
@@ -63,6 +65,10 @@ On first run, you’ll be redirected to `/setup` to create the initial admin.
    - `GET /nic/update?hostname=dyndns.example.com&myip=1.2.3.4`
 
 Auth: HTTP Basic Auth (username/password you created in the GUI)
+
+Use this endpoint in your internet router, such as a FRITZ!Box (example router):
+
+<center><img src="docs/fritzbox-dnydns-example.png" alt="FRITZ!Box DynDNS example" style="max-width:100%;" /></center>
 
 ## Production (Docker + Caddy)
 
