@@ -11,21 +11,24 @@ export async function initRedis() {
   if (redisClient) return redisClient;
 
   try {
-    redisClient = createClient({
+    const client = createClient({
       url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`,
       password: process.env.REDIS_PASSWORD || undefined,
+      socket: { reconnectStrategy: false },
     });
 
-    redisClient.on('error', (err) => {
+    await client.connect();
+
+    client.on('error', (err) => {
       console.error('Redis Client Error', err);
       redisClient = null; // Fall back to in-memory
     });
 
-    await redisClient.connect();
+    redisClient = client;
     console.log('✓ Redis connected');
     return redisClient;
   } catch (error) {
-    console.warn('Redis unavailable, using in-memory session store');
+    console.warn('Redis unavailable, using in-memory session store', error);
     redisClient = null;
     return null;
   }

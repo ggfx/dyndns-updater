@@ -89,10 +89,12 @@ async function ensureRRsetForDomain(apiKey, fqdn, value, type = 'A') {
   const recordName = fqdn === domain.name ? '' : fqdn.substring(0, fqdn.length - domain.name.length - 1);
 
   let record = await findRecord(apiKey, domain.name, recordName, type);
+  let wasCreated = false;
 
   if (!record) {
     // Create new record
     record = await createRecord(apiKey, domain.name, recordName, type, value);
+    wasCreated = true;
   } else {
     // Update existing record
     record = await updateRecord(apiKey, domain.name, record.id, value);
@@ -108,6 +110,7 @@ async function ensureRRsetForDomain(apiKey, fqdn, value, type = 'A') {
     recordName: recordName || '@',
     recordId: record.id,
     value,
+    wasCreated,
   };
 }
 
@@ -132,6 +135,23 @@ async function updateDynDNSRRset(apiKey, domainName, recordIdentifier, ip, type 
   return await updateRecord(apiKey, domainName, recordId, ip);
 }
 
+async function deleteRRset(apiKey, zoneId, recordName, recordId = null, type = 'A') {
+  // DigitalOcean uses zoneId (domain name) + recordId to delete
+  // If recordId not provided, look it up by recordName
+  if (!recordId) {
+    const normalizedName = recordName === '@' ? '' : recordName;
+    const record = await findRecord(apiKey, zoneId, normalizedName, type);
+    if (!record) {
+      throw new Error(`Record "${recordName}" not found in domain "${zoneId}"`);
+    }
+    recordId = record.id;
+  }
+  
+  await request(apiKey, `/domains/${zoneId}/records/${recordId}`, {
+    method: 'DELETE',
+  });
+}
+
 // Provider interface
 export default {
   name: 'digitalocean',
@@ -140,4 +160,5 @@ export default {
   
   ensureRRsetForDomain,
   updateDynDNSRRset,
+  deleteRRset,
 };

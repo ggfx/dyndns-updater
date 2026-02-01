@@ -144,6 +144,10 @@ const { title, description = 'DynDNS Updater Service' } = Astro.props;
         background-color: var(--card-bg);
         color: var(--text-color);
       }
+      input[type="checkbox"] {
+        width: auto;
+        margin-right: 8px;
+      }
 
       label {
         display: block;
@@ -233,48 +237,14 @@ const { title, description = 'DynDNS Updater Service' } = Astro.props;
         margin-left: auto;
       }
 
-      .theme-toggle-btn {
-        background: transparent;
-        border: 1px solid var(--border-color);
-        color: var(--text-color);
-        padding: 8px 12px;
-        font-size: 18px;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s;
-        line-height: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 44px;
-        min-height: 44px;
-      }
-
-      .theme-toggle-btn:hover {
-        background: var(--bg-color);
-        border-color: var(--color-primary);
-      }
-
-      .theme-reset-btn {
-        background: transparent;
-        border: 1px solid var(--border-color);
-        color: var(--text-color);
-        padding: 6px 10px;
-        font-size: 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s;
+      #resetThemeBtn {
+        border: 0px;
         display: none;
         white-space: nowrap;
       }
 
-      .theme-reset-btn.visible {
+      #resetThemeBtn.visible {
         display: block;
-      }
-
-      .theme-reset-btn:hover {
-        background: var(--bg-color);
-        border-color: var(--color-primary);
       }
 
       @media (max-width: 768px) {
@@ -283,13 +253,6 @@ const { title, description = 'DynDNS Updater Service' } = Astro.props;
         }
         
         .nav-title {
-          font-size: 16px;
-        }
-        
-        .theme-toggle-btn {
-          padding: 6px 10px;
-          min-width: 40px;
-          min-height: 40px;
           font-size: 16px;
         }
         
@@ -305,8 +268,8 @@ const { title, description = 'DynDNS Updater Service' } = Astro.props;
       <div class="nav-container">
         <a href="/dashboard" class="nav-title">DynDNS Updater</a>
         <div class="theme-switcher">
-          <button class="theme-reset-btn" id="resetThemeBtn" title="Reset to system theme">System</button>
-          <button class="theme-toggle-btn" id="themeToggleBtn" title="Toggle theme">
+          <button class="btn-link-secondary" id="resetThemeBtn" title="Reset to system theme">System</button>
+          <button class="icon-btn" id="themeToggleBtn" title="Toggle theme">
             <span id="themeIcon">☀️</span>
           </button>
         </div>

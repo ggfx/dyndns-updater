@@ -75,43 +75,41 @@ const successMessage = Astro.url.searchParams.get('success');
 ---
 
 <Layout title="Dashboard">
-  <div style="max-width: 1100px; margin: 0 auto; padding: 10px 0 30px 0;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <div class="page-container">
+    <div class="page-header">
       <div>
-        <h1 style="margin-bottom: 6px; color: var(--color-primary);">Dashboard</h1>
-        <p style="opacity: 0.7;">Manage DynDNS users, domains, and DNS provider API keys.</p>
+        <h1>Dashboard</h1>
+        <p class="text-muted">Manage DynDNS users, domains, and DNS provider API keys.</p>
       </div>
-      <div style="display: flex; gap: 12px; align-items: center;">
-        <span style="opacity: 0.7; font-size: 14px;">Signed in as <strong>{admin.username}</strong></span>
-        <span style="flex-shrink: 0;">
-          <a href="/admin/edit" title="Edit profile" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: transparent; border: 1px solid var(--border-color); border-radius: 6px; text-decoration: none; font-size: 18px; transition: all 0.2s;">⚙️</a>
-        </span>
-        <a href="?action=logout" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; transition: all 0.2s; white-space: nowrap;">Logout</a>
+      <div class="flex-row">
+        <span class="text-muted text-small">Signed in as <strong>{admin.username}</strong></span>
+        <a href="/admin/edit" title="Edit profile" class="icon-btn">⚙️</a>
+        <a href="?action=logout" class="btn-link-secondary">Logout</a>
       </div>
     </div>
 
-    {successMessage && <div class="alert success" style="margin-bottom: 16px;">{successMessage}</div>}
+    {successMessage && <div class="alert success mb-2">{successMessage}</div>}
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-      <h2 style="margin: 0;">DynDNS Users</h2>
-      <a href="/users/new" style="background: var(--color-primary); color: white; padding: 10px 16px; border-radius: 6px; text-decoration: none; font-weight: 600;">+ Add DynDNS User</a>
+    <div class="page-header">
+      <h2>DynDNS Users</h2>
+      <a href="/users/new" class="btn-link">+ Add DynDNS User</a>
     </div>
 
     {dyndnsUsers.length === 0 ? (
-      <div style="padding: 40px; text-align: center; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px;">
+      <div class="card text-center" style="padding: 40px;">
         <p style="font-size: 18px; margin-bottom: 8px;">No DynDNS users yet.</p>
-        <p style="opacity: 0.7; margin-bottom: 20px;">Create a user to configure credentials and domains.</p>
-        <a href="/users/new" style="background: var(--color-primary); color: white; padding: 12px 22px; border-radius: 6px; text-decoration: none; font-weight: 600;">Create DynDNS User</a>
+        <p class="text-muted mb-3">Create a user to configure credentials and domains.</p>
+        <a href="/users/new" class="btn-link">Create DynDNS User</a>
       </div>
     ) : (
-      <div style="display: grid; gap: 12px;">
+      <div class="flex-col">
         {dyndnsUsers.map(user => (
-          <div style="display: block; padding: 18px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px;">
-            <a href={`/users/${user.id}`} style="display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: inherit; margin-bottom: 14px;">
+          <div class="user-card">
+            <a href={`/users/${user.id}`} class="user-card-header">
               <div>
                 <h3 style="margin: 0 0 6px 0; color: var(--color-primary);">{user.username}</h3>
-                {user.description && <p style="margin: 0 0 6px 0; opacity: 0.75;">{user.description}</p>}
-                <div style="display: flex; gap: 14px; font-size: 13px; opacity: 0.75; flex-wrap: wrap;">
+                {user.description && <p class="text-muted" style="margin: 0 0 6px 0;">{user.description}</p>}
+                <div class="user-meta">
                   <span>📍 {user.domain_count} {user.domain_count === 1 ? 'domain' : 'domains'}</span>
                   <span>☁️ {providerMap[user.provider]?.displayName || user.provider}</span>
                   <span>📅 {new Date(user.created_at).toLocaleDateString()}</span>
@@ -121,11 +119,11 @@ const successMessage = Astro.url.searchParams.get('success');
             </a>
 
             {userLogs[user.id].length > 0 && (
-              <div style="padding-top: 14px; border-top: 1px solid var(--border-color);">
-                <p style="margin: 0 0 10px 0; font-size: 12px; font-weight: 600; opacity: 0.7; text-transform: uppercase;">Recent Updates</p>
-                <div style="display: grid; gap: 8px;">
+              <div style="padding-top: 12px; border-top: 1px solid var(--border-color); margin-top: 12px;">
+                <p class="text-xs text-muted" style="margin: 0 0 10px 0; font-weight: 600; text-transform: uppercase;">Recent Updates</p>
+                <div class="flex-col" style="gap: 8px;">
                   {userLogs[user.id].map(log => (
-                    <div style={`padding: 10px; border-radius: 6px; font-size: 12px; ${log.success ? 'background: rgba(34,197,94,0.1); color: #22c55e;' : 'background: rgba(239,68,68,0.1); color: #ef4444;'}`}>
+                    <div class={`log-entry ${log.success ? 'success' : 'error'}`}>
                       <div style="display: flex; justify-content: space-between; gap: 8px;">
                         <div>
                           <strong>{log.domain}</strong> 

@@ -46,15 +46,15 @@ if (formData) {
 ---
 
 <Layout title="New DynDNS User">
-  <div style="max-width: 700px; margin: 0 auto; padding: 10px 0 30px 0;">
-    <a href="/dashboard" style="text-decoration: none; color: var(--text-color); opacity: 0.7;">← Back to dashboard</a>
+  <div class="page-container" style="max-width: 700px;">
+    <a href="/dashboard" class="link-back">← Back to dashboard</a>
     <h1 style="margin: 12px 0 8px 0;">Create DynDNS User</h1>
-    <p style="opacity: 0.7; margin-bottom: 20px;">Set credentials, choose a DNS provider, and provide the API key.</p>
+    <p class="text-muted mb-3">Set credentials, choose a DNS provider, and provide the API key.</p>
 
     {error && <div class="alert error">{error}</div>}
     {success && <div class="alert success">{success}</div>}
 
-    <form method="post" style="display: grid; gap: 14px;">
+    <form method="post" class="form-grid">
       <label class="input-label">
         Username
         <input name="username" placeholder="dyndns-client" required />

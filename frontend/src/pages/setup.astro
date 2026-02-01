@@ -47,7 +47,7 @@ if (Astro.request.method === 'POST') {
 <Layout title="Initial Setup">
   <div class="container" style="max-width: 500px; margin: 80px auto;">
     <h2>Welcome to DynDNS Updater</h2>
-    <p style="margin-bottom: 30px; opacity: 0.7;">
+    <p class="text-muted mb-3">
       No administrator account exists yet. Create your first admin account to get started.
     </p>
 
@@ -67,7 +67,7 @@ if (Astro.request.method === 'POST') {
           minlength="3"
           placeholder="Choose a username"
         />
-        <small style="opacity: 0.7;">Min. 3 characters</small>
+        <small class="text-muted">Min. 3 characters</small>
       </div>
 
       <div class="form-group">
@@ -80,7 +80,7 @@ if (Astro.request.method === 'POST') {
           minlength="6"
           placeholder="Choose a strong password"
         />
-        <small style="opacity: 0.7;">Min. 6 characters</small>
+        <small class="text-muted">Min. 6 characters</small>
       </div>
 
       <div class="form-group">

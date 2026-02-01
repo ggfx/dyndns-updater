@@ -81,9 +81,11 @@ async function ensureRRsetForDomain(apiKey, fqdn, value, type = 'A') {
   const recordName = fqdn === zone.name ? '@' : fqdn.substring(0, fqdn.length - zone.name.length - 1);
 
   let rrset = await getRRset(apiKey, zone.id, recordName, type);
+  let wasCreated = false;
 
   if (!rrset) {
     rrset = await createRRset(apiKey, zone.id, recordName, type, value);
+    wasCreated = true;
   } else {
     rrset = await updateRRset(apiKey, zone.id, recordName, type, value);
   }
@@ -99,11 +101,19 @@ async function ensureRRsetForDomain(apiKey, fqdn, value, type = 'A') {
     rrsetName: rrset.name,
     recordId: null,
     value,
+    wasCreated,
   };
 }
 
 async function updateDynDNSRRset(apiKey, zoneId, recordName, ip, type = 'A') {
   return await updateRRset(apiKey, zoneId, recordName, type, ip, 900);
+}
+
+async function deleteRRset(apiKey, zoneId, recordName, recordId = null, type = 'A') {
+  // Hetzner uses zoneId + recordName + type to delete (recordId not used)
+  await request(apiKey, `/zones/${zoneId}/rrsets/${encodeURIComponent(recordName)}/${type}`, {
+    method: 'DELETE',
+  });
 }
 
 // Provider interface
@@ -114,4 +124,5 @@ export default {
   
   ensureRRsetForDomain,
   updateDynDNSRRset,
+  deleteRRset,
 };

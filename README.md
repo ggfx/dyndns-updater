@@ -15,8 +15,6 @@ Easily extensible: add new providers by creating a new module in `lib/providers/
 - Management GUI (create first admin, login, manage DynDNS users with provider selection, API keys and domains)
 - DynDNS endpoint with Basic Auth (`/nic/update`), standard `hostname` and `myip` params
 - Multi-provider DNS API integration - auto-resolves zone/domain + record name from FQDN
-- SQLite storage (WAL) for admins, dyndns users, domains, update logs
-- Dashboard shows last 5 update logs per user and their DNS provider
 - Provider-agnostic architecture for easy extensibility
 
 <center><img src="docs/dyndns-dashboard.png" alt="DynDNS Updater Dashboard" style="max-width:100%;" /></center>
@@ -55,6 +53,12 @@ npm run dev
 
 On first run, you’ll be redirected to `/setup` to create the initial admin.
 
+If you want to use Redis locally, you can use docker-compose.dev.yml to spin up Redis first.
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
 ## DynDNS Endpoint
 
 - Update all domains (IP auto-detect):
@@ -70,12 +74,12 @@ Use this endpoint in your internet router, such as a FRITZ!Box (example router):
 
 <center><img src="docs/fritzbox-dnydns-example.png" alt="FRITZ!Box DynDNS example" style="max-width:100%;" /></center>
 
-## Production (Docker + Caddy)
+## Production
 
 ### Prerequisites
 - Docker and Docker Compose installed
 - **For public servers**: A domain name pointing to your server's public IP
-- **For local networks**: No domain required - use HTTP on port 80
+- **For local networks**: Just use HTTP on port 80
 
 ### Configure
 
@@ -91,18 +95,7 @@ This will automatically provision SSL certificates via Let's Encrypt and serve o
 ```
 DOMAIN_DYNDNS_UPDATER=:80
 ```
-Perfect for running on a local machine, Raspberry Pi, or home server behind a router. Access the service via your local IP address (e.g., `http://192.168.1.100`) without SSL encryption. No domain name or SSL certificates needed.
-
-### Caddyfile Configuration
-
-Ensure the domain is referenced in Caddy via `{$DOMAIN_DYNDNS_UPDATER}` in [Caddyfile](Caddyfile):
-   ```
-   {$DOMAIN_DYNDNS_UPDATER} {
-     reverse_proxy dyndns-web:4321
-   }
-   ```
-
-Verify volumes in [docker-compose.yml](docker-compose.yml) to persist SQLite at `./frontend/data`.
+Perfect for running on a local machine, Raspberry Pi, or home server behind a router. Access the service via your local IP address (e.g., `http://192.168.1.100`) without SSL encryption.
 
 ### Build and Run
 ```bash
@@ -147,7 +140,8 @@ docker compose -f docker-compose.yml up -d --build
 - Recent updates appear on the dashboard (last 5 per user)
 - Updater is currently supporting only IPv4 A-record
 - You already need to have a zone/domain name at one of the supported providers to modify them
-- Subdomains will be created automatically if they do not already exist
+- Subdomains will be created automatically if they do not already exist in the zone
+- If you delete a user, the corresponding subdomains or zones will not be deleted/touched
 
 ## Security
 - Secrets: Provider API keys per DynDNS user via the GUI

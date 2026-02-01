@@ -70,34 +70,34 @@ admin = db.prepare('SELECT id, username, created_at FROM admins WHERE id = ?').g
 ---
 
 <Layout title="Edit Admin">
-  <div style="max-width: 600px; margin: 0 auto; padding: 10px 0 30px 0;">
+  <div class="page-container" style="max-width: 600px;">
     <div>
-      <a href="/dashboard" style="text-decoration: none; color: var(--text-color); opacity: 0.7;">← Back to Dashboard</a>
+      <a href="/dashboard" class="link-back">← Back to Dashboard</a>
       <h1 style="margin: 8px 0 4px 0;">Admin Settings</h1>
-      <p style="margin: 0; opacity: 0.75;">Manage your admin account.</p>
+      <p class="text-muted" style="margin: 0;">Manage your admin account.</p>
     </div>
 
-    {error && <div class="alert error" style="margin-top: 16px;">{error}</div>}
-    {success && <div class="alert success" style="margin-top: 16px;">{success}</div>}
+    {error && <div class="alert error mt-2">{error}</div>}
+    {success && <div class="alert success mt-2">{success}</div>}
 
-    <section style="margin-top: 24px; padding: 18px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--card-bg);">
+    <section class="card mt-3">
       <h3 style="margin-top: 0;">Account Information</h3>
-      <div style="display: grid; gap: 12px; margin-bottom: 16px;">
+      <div class="form-grid mb-2">
         <div>
-          <label style="display: block; opacity: 0.7; font-size: 14px; margin-bottom: 4px;">Username</label>
-          <div style="padding: 10px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 6px;">{admin.username}</div>
+          <label class="text-muted text-small" style="display: block; margin-bottom: 4px;">Username</label>
+          <div style="padding: 10px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">{admin.username}</div>
         </div>
         <div>
-          <label style="display: block; opacity: 0.7; font-size: 14px; margin-bottom: 4px;">Created</label>
-          <div style="padding: 10px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 6px;">{new Date(admin.created_at).toLocaleDateString()}</div>
+          <label class="text-muted text-small" style="display: block; margin-bottom: 4px;">Created</label>
+          <div style="padding: 10px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">{new Date(admin.created_at).toLocaleDateString()}</div>
         </div>
       </div>
     </section>
 
-    <section style="margin-top: 24px; padding: 18px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--card-bg);">
+    <section class="card mt-3">
       <h3 style="margin-top: 0;">Change Username</h3>
-      <p style="opacity: 0.7; margin-top: 0;">Update your admin username.</p>
-      <form method="post" style="display: grid; gap: 12px;">
+      <p class="text-muted" style="margin-top: 0;">Update your admin username.</p>
+      <form method="post" class="form-grid">
         <input type="hidden" name="action" value="update-username" />
         <label class="input-label">
           New Username
@@ -111,10 +111,10 @@ admin = db.prepare('SELECT id, username, created_at FROM admins WHERE id = ?').g
       </form>
     </section>
 
-    <section style="margin-top: 24px; padding: 18px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--card-bg);">
+    <section class="card mt-3">
       <h3 style="margin-top: 0;">Change Password</h3>
-      <p style="opacity: 0.7; margin-top: 0;">Enter your current password and your new password.</p>
-      <form method="post" style="display: grid; gap: 12px;">
+      <p class="text-muted" style="margin-top: 0;">Enter your current password and your new password.</p>
+      <form method="post" class="form-grid">
         <input type="hidden" name="action" value="update-password" />
         <label class="input-label">
           Current Password

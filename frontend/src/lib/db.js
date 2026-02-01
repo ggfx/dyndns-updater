@@ -67,36 +67,60 @@ db.exec(`
 runMigrations();
 
 function runMigrations() {
-  // Migration 1: Add provider column to dyndns_users if it doesn't exist
+  // Migration 1: Normalize dyndns_users schema (add provider, api_key, remove hetzner_api_key if needed)
   try {
     const checkColumn = db.prepare("PRAGMA table_info(dyndns_users)").all();
     const hasProvider = checkColumn.some(col => col.name === 'provider');
-    
-    if (!hasProvider) {
-      db.exec("ALTER TABLE dyndns_users ADD COLUMN provider TEXT DEFAULT 'hetzner'");
-      db.exec("UPDATE dyndns_users SET provider = 'hetzner' WHERE provider IS NULL");
-      console.log('✓ Migration: Added provider column to dyndns_users table and set all to hetzner');
-    }
-  } catch (e) {
-    console.error('Migration error (provider column):', e);
-  }
-
-  // Migration 2: Add api_key column if it doesn't exist (for users upgrading from hetzner_api_key)
-  try {
-    const checkColumn = db.prepare("PRAGMA table_info(dyndns_users)").all();
     const hasApiKey = checkColumn.some(col => col.name === 'api_key');
     const hasHetznerApiKey = checkColumn.some(col => col.name === 'hetzner_api_key');
-    
-    if (!hasApiKey && hasHetznerApiKey) {
-      db.exec("ALTER TABLE dyndns_users ADD COLUMN api_key TEXT");
-      db.exec("UPDATE dyndns_users SET api_key = hetzner_api_key WHERE hetzner_api_key IS NOT NULL");
-      console.log('✓ Migration: Added api_key column and migrated data from hetzner_api_key');
+
+    // Rebuild table if schema is outdated (missing provider or api_key, or has legacy hetzner_api_key)
+    if (!hasProvider || !hasApiKey || hasHetznerApiKey) {
+      db.exec('BEGIN');
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS dyndns_users_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          provider TEXT DEFAULT 'hetzner',
+          api_key TEXT NOT NULL,
+          description TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Build SELECT dynamically based on which columns exist
+      const providerCol = hasProvider ? 'COALESCE(provider, \'hetzner\')' : '\'hetzner\'';
+      const apiKeyCol = hasApiKey ? (hasHetznerApiKey ? 'COALESCE(api_key, hetzner_api_key, \'\')' : 'api_key') : (hasHetznerApiKey ? 'hetzner_api_key' : '\'\'');
+      
+      db.exec(`
+        INSERT INTO dyndns_users_new (id, username, password_hash, provider, api_key, description, created_at)
+        SELECT 
+          id, 
+          username, 
+          password_hash, 
+          ${providerCol},
+          ${apiKeyCol},
+          description,
+          created_at
+        FROM dyndns_users
+      `);
+
+      db.exec('DROP TABLE dyndns_users');
+      db.exec('ALTER TABLE dyndns_users_new RENAME TO dyndns_users');
+      db.exec('COMMIT');
+      console.log('✓ Migration: Normalized dyndns_users schema');
     }
   } catch (e) {
-    console.error('Migration error (api_key column):', e);
+    try {
+      db.exec('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('Migration rollback error:', rollbackError);
+    }
+    console.error('Migration error (dyndns_users schema):', e);
   }
 
-  // Migration 3: Add record_id column to domains table if it doesn't exist
+  // Migration 2: Add record_id column to domains table if it doesn't exist
   try {
     const checkColumn = db.prepare("PRAGMA table_info(domains)").all();
     const hasRecordId = checkColumn.some(col => col.name === 'record_id');
@@ -107,6 +131,19 @@ function runMigrations() {
     }
   } catch (e) {
     console.error('Migration error (record_id column):', e);
+  }
+
+  // Migration 3: Add app_created column to domains table if it doesn't exist
+  try {
+    const checkColumn = db.prepare("PRAGMA table_info(domains)").all();
+    const hasAppCreated = checkColumn.some(col => col.name === 'app_created');
+    
+    if (!hasAppCreated) {
+      db.exec('ALTER TABLE domains ADD COLUMN app_created INTEGER DEFAULT 0');
+      console.log('✓ Migration: Added app_created column to domains table');
+    }
+  } catch (e) {
+    console.error('Migration error (app_created column):', e);
   }
 }
 
