@@ -67,7 +67,7 @@ if (Astro.request.method === 'POST') {
           minlength="3"
           placeholder="Choose a username"
         />
-        <small class="text-muted">Min. 3 characters</small>
+        <small class="text-small text-muted">Min. 3 characters</small>
       </div>
 
       <div class="form-group">
@@ -80,7 +80,7 @@ if (Astro.request.method === 'POST') {
           minlength="6"
           placeholder="Choose a strong password"
         />
-        <small class="text-muted">Min. 6 characters</small>
+        <small class="text-small text-muted">Min. 6 characters</small>
       </div>
 
       <div class="form-group">
@@ -103,80 +103,3 @@ if (Astro.request.method === 'POST') {
     </div>
   </div>
 </Layout>
-
-<style>
-  .container {
-    background: var(--card-bg);
-    border-radius: 8px;
-    padding: 40px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--border-color);
-  }
-
-  h2 {
-    color: var(--color-primary);
-    margin-bottom: 10px;
-  }
-
-  .form-group {
-    margin-bottom: 20px;
-  }
-
-  label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-  }
-
-  input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--bg-color);
-    color: var(--text-color);
-    margin-bottom: 5px;
-  }
-
-  input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-  }
-
-  small {
-    font-size: 13px;
-  }
-
-  button {
-    background: var(--color-primary);
-    color: white;
-    padding: 12px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 500;
-  }
-
-  button:hover {
-    opacity: 0.9;
-  }
-
-  .alert {
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-    border-left: 4px solid;
-  }
-
-  .alert.error {
-    background-color: rgba(204, 0, 0, 0.1);
-    color: #cc0000;
-    border-color: #cc0000;
-  }
-
-  [data-theme="dark"] .alert.error {
-    background-color: rgba(204, 0, 0, 0.2);
-    color: #ff9999;
-  }
-</style>

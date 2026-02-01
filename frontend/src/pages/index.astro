@@ -51,7 +51,7 @@ if (Astro.request.method === 'POST') {
 <Layout title="Login">
   <div class="container" style="max-width: 400px; margin: 80px auto;">
     <h2>Login</h2>
-    <p style="margin-bottom: 30px; opacity: 0.7;">Sign in to manage your DynDNS settings</p>
+    <p class="text-muted mb-3">Sign in to manage your DynDNS settings</p>
 
     {loginError && (
       <div class="alert error">{loginError}</div>
@@ -72,75 +72,3 @@ if (Astro.request.method === 'POST') {
     </form>
   </div>
 </Layout>
-
-<style>
-  .container {
-    background: var(--card-bg);
-    border-radius: 8px;
-    padding: 40px;
-    box-shadow: 0 2 8px rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--border-color);
-  }
-
-  h2 {
-    color: var(--color-primary);
-    margin-bottom: 10px;
-  }
-
-  .form-group {
-    margin-bottom: 20px;
-  }
-
-  label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-  }
-
-  input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--bg-color);
-    color: var(--text-color);
-  }
-
-  input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-  }
-
-  button {
-    background: var(--color-primary);
-    color: white;
-    padding: 12px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 500;
-  }
-
-  button:hover {
-    opacity: 0.9;
-  }
-
-  .alert {
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-    border-left: 4px solid;
-  }
-
-  .alert.error {
-    background-color: rgba(204, 0, 0, 0.1);
-    color: #cc0000;
-    border-color: #cc0000;
-  }
-
-  [data-theme="dark"] .alert.error {
-    background-color: rgba(204, 0, 0, 0.2);
-    color: #ff9999;
-  }
-</style>

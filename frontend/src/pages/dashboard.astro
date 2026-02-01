@@ -76,12 +76,12 @@ const successMessage = Astro.url.searchParams.get('success');
 
 <Layout title="Dashboard">
   <div class="page-container">
-    <div class="page-header">
+    <div class="page-header" style="align-items: flex-end;">
       <div>
         <h1>Dashboard</h1>
         <p class="text-muted">Manage DynDNS users, domains, and DNS provider API keys.</p>
       </div>
-      <div class="flex-row">
+      <div class="flex-row mb-2">
         <span class="text-muted text-small">Signed in as <strong>{admin.username}</strong></span>
         <a href="/admin/edit" title="Edit profile" class="icon-btn">⚙️</a>
         <a href="?action=logout" class="btn-link-secondary">Logout</a>
