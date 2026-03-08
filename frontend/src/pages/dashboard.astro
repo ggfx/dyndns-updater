@@ -129,7 +129,7 @@ const successMessage = Astro.url.searchParams.get('success');
                           <strong>{log.domain}</strong> 
                           <span style="opacity: 0.8;">→ {log.ip}</span>
                         </div>
-                        <span style="opacity: 0.7; white-space: nowrap;">{new Date(log.created_at).toLocaleTimeString()}</span>
+                        <span style="opacity: 0.7; white-space: nowrap;">{new Date(log.created_at).toLocaleString()}</span>
                       </div>
                       {log.message && <div style="opacity: 0.8; margin-top: 4px;">{log.message}</div>}
                     </div>
