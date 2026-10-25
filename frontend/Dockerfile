@@ -1,8 +1,10 @@
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
+RUN apk add --no-cache libstdc++
 WORKDIR /app
 
 # Install dependencies
 FROM base AS deps
+RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 RUN npm ci
 

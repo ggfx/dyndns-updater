@@ -42,7 +42,7 @@ Easily extensible: add new providers by creating a new module in `lib/providers/
 
 ## Local Development
 
-Prereqs: Node 20+, npm
+Prereqs: Node.js 24 LTS or newer, npm
 
 ```bash
 cd frontend
